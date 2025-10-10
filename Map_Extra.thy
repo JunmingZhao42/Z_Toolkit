@@ -31,15 +31,10 @@ lemma map_graph_functional[simp]: "functional (map_graph f)"
   by (simp add:functional_def map_graph_def inj_on_def)
 
 lemma map_graph_countable [simp]: "countable (dom f) \<Longrightarrow> countable (map_graph f)"
-  apply (simp add:map_graph_def countable_def, safe)
-  apply (rename_tac f')
-  apply (rule_tac x="f' \<circ> fst" in exI)
-  apply (simp add:inj_on_def dom_def)
-  apply fastforce
-  done
+  by (metis countable_image graph_def graph_eq_to_snd_dom map_graph_def)
 
 lemma map_graph_inv [simp]: "graph_map (map_graph f) = f"
-  by (auto intro!:ext simp add:map_graph_def graph_map_def image_def)
+  by (force simp add:map_graph_def graph_map_def image_def)
 
 lemma graph_map_empty[simp]: "graph_map {} = Map.empty"
   by (simp add:graph_map_def)

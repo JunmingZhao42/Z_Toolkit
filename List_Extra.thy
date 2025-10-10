@@ -49,18 +49,37 @@ where
 | "(x # xs)\<langle>i\<rangle>\<^sub>l = (case i of 0 \<Rightarrow> Some x | Suc j \<Rightarrow> xs \<langle>j\<rangle>\<^sub>l)"
 
 lemma nth_el_appendl[simp]: "i < length xs \<Longrightarrow> (xs @ ys)\<langle>i\<rangle>\<^sub>l = xs\<langle>i\<rangle>\<^sub>l"
-  apply (induct xs arbitrary: i)
-   apply simp
-  apply (case_tac i)
-   apply simp_all
-  done
+proof (induct xs arbitrary: i)
+  case Nil
+  then show ?case by simp
+next
+  case (Cons a xs)
+  then show ?case 
+  proof (cases i)
+    case 0
+    then show ?thesis by simp
+  next
+    case (Suc nat)
+    with Cons show ?thesis by simp
+  qed
+qed
 
 lemma nth_el_appendr[simp]: "length xs \<le> i \<Longrightarrow> (xs @ ys)\<langle>i\<rangle>\<^sub>l = ys\<langle>i - length xs\<rangle>\<^sub>l"
-  apply (induct xs arbitrary: i)
-   apply simp
-  apply (case_tac i)
-   apply simp_all
-  done
+proof (induct xs arbitrary: i)
+  case Nil
+  then show ?case by simp
+next
+  case (Cons a xs)
+  then show ?case 
+  proof (cases i)
+    case 0
+    with Cons show ?thesis
+      by fastforce
+  next
+    case (Suc nat)
+    with Cons show ?thesis by simp
+  qed
+qed
 
 subsection \<open> Extra List Theorems \<close>
 
@@ -260,23 +279,35 @@ subsubsection \<open> Drop While and Take While \<close>
 
 lemma dropWhile_sorted_le_above:
   "\<lbrakk> sorted xs; x \<in> set (dropWhile (\<lambda> x. x \<le> n) xs) \<rbrakk> \<Longrightarrow> x > n"
-  apply (induct xs)
-   apply (simp_all)
-  apply (rename_tac a xs)
-  apply (case_tac "a \<le> n")
-   apply (auto)
-  done
+proof (induct xs)
+  case Nil
+  then show ?case
+    by simp 
+next
+  case (Cons a xs)
+  then show ?case
+  proof (cases "a \<le> n")
+    case True
+    with Cons show ?thesis by simp
+  next
+    case False
+    with Cons show ?thesis
+      by force 
+  qed
+qed
 
 lemma set_dropWhile_le:
   "sorted xs \<Longrightarrow> set (dropWhile (\<lambda> x. x \<le> n) xs) = {x\<in>set xs. x > n}"
-  apply (induct xs)
-   apply (simp)
-  apply (rename_tac x xs)
-  apply (subgoal_tac "sorted xs")
-   apply (simp)
-   apply (safe)
-     apply (auto)
-  done
+proof (induct xs)
+  case Nil
+  then show ?case by simp
+next
+  case (Cons a xs)
+  hence "sorted xs"
+    using sorted_simps(2) by blast
+  with Cons show ?case 
+    by force
+qed
 
 lemma set_takeWhile_less_sorted:
   "\<lbrakk> sorted I; x \<in> set I; x < n \<rbrakk> \<Longrightarrow> x \<in> set (takeWhile (\<lambda>x. x < n) I)"
@@ -289,12 +320,14 @@ next
 qed
 
 lemma nth_le_takeWhile_ord: "\<lbrakk> sorted xs; i \<ge> length (takeWhile (\<lambda> x. x \<le> n) xs); i < length xs \<rbrakk> \<Longrightarrow> n \<le> xs ! i"
-  apply (induct xs arbitrary: i, simp_all)
-  apply (rename_tac x xs i)
-  apply (case_tac "x \<le> n")
-   apply (safe, simp_all)
-  apply (metis One_nat_def Suc_eq_plus1 le_less_linear le_less_trans less_imp_le list.size(4) nth_mem set_ConsD)
-  done
+proof (induct xs arbitrary: i)
+  case Nil
+  then show ?case by simp
+next
+  case (Cons a xs)
+  then show ?case
+    by (meson dual_order.trans nle_le nth_length_takeWhile order_le_less_trans sorted_iff_nth_mono) 
+qed
 
 lemma length_takeWhile_less:
   "\<lbrakk> a \<in> set xs; \<not> P a \<rbrakk> \<Longrightarrow> length (takeWhile P xs) < length xs"
@@ -349,13 +382,17 @@ lemma prefix_Cons_elim [elim]:
 lemma prefix_map_inj:
   "\<lbrakk> inj_on f (set xs \<union> set ys); prefix (map f xs) (map f ys) \<rbrakk> \<Longrightarrow>
    prefix xs ys"
-  apply (induct xs arbitrary:ys)
-   apply (simp_all)
-  apply (erule prefix_Cons_elim)
-  apply safe
-  apply (metis Diff_iff Sublist.Cons_prefix_Cons Un_insert_right empty_iff image_eqI inj_on_insert insert_iff
-      list.simps(15))
-  done
+proof (induct xs arbitrary:ys)
+  case Nil
+  then show ?case
+    by simp 
+next
+  case (Cons x xs)
+  obtain ys' where "map f ys = f x # ys'" "prefix (map f xs) ys'"
+    using Cons.prems(2) by auto 
+  with Cons show ?case
+    by (simp, safe, metis Diff_iff Sublist.Cons_prefix_Cons Un_insert_right empty_iff image_eqI inj_on_insert insert_iff list.simps(15))
+qed
 
 lemma prefix_map_inj_eq [simp]:
   "inj_on f (set xs \<union> set ys) \<Longrightarrow>
@@ -491,22 +528,60 @@ lemma gcp_append [simp]: "gcp (xs @ ys) (xs @ zs) = xs @ gcp ys zs"
   by (induct xs, auto)
 
 lemma gcp_lb1: "prefix (gcp xs ys) xs"
-  apply (induct xs arbitrary: ys, simp)
-  apply (case_tac ys, auto)
-  done
+proof (induct xs arbitrary: ys)
+  case Nil
+  then show ?case by simp
+next
+  case (Cons a xs)
+  then show ?case
+  proof (cases ys)
+    case Nil
+    then show ?thesis by simp
+  next
+    case (Cons a list)
+    then show ?thesis
+      by (simp add: Cons.hyps)
+  qed
+qed
 
 lemma gcp_lb2: "prefix (gcp xs ys) ys"
-  apply (induct ys arbitrary: xs, simp)
-  apply (case_tac xs, auto)
-  done
+proof (induct xs arbitrary: ys)
+  case Nil
+  then show ?case by simp
+next
+  case (Cons a xs)
+  then show ?case
+  proof (cases ys)
+    case Nil
+    then show ?thesis by simp
+  next
+    case (Cons a list)
+    then show ?thesis
+      by (simp add: Cons.hyps)
+  qed
+qed
 
 interpretation prefix_semilattice: semilattice_inf gcp prefix strict_prefix
 proof
   fix xs ys :: "'a list"
   show "prefix (gcp xs ys) xs"
-    by (induct xs arbitrary: ys, simp, case_tac ys, auto)
+  proof (induct xs arbitrary: ys)
+    case Nil
+    then show ?case by simp
+  next
+    case (Cons a xs)
+    then show ?case
+      by (simp add: gcp_lb1) 
+  qed
   show "prefix (gcp xs ys) ys"
-    by (induct ys arbitrary: xs, simp, case_tac xs, auto)
+  proof (induct xs arbitrary: ys)
+    case Nil
+    then show ?case by simp
+  next
+    case (Cons a xs)
+    then show ?case
+      by (simp add: gcp_lb2) 
+  qed
 next
   fix xs ys zs :: "'a list"
   assume "prefix xs ys" "prefix xs zs"
@@ -577,10 +652,10 @@ using assms proof (induct xs arbitrary: ys)
       by auto
     with hyps(1,3) ys obtain i where "(xs!i, ys'!i) \<in> R" "i < length xs" "(\<forall> j<i. xs!j = ys'!j)"
       by force
-    with xy ys show ?thesis
-      apply (rule_tac x="Suc i" in exI)
-      apply (auto simp add: less_Suc_eq_0_disj)
-    done
+    with xy ys have "((x # xs) ! Suc i, ys ! Suc i) \<in> R \<and> Suc i < length (x # xs) \<and> (\<forall>j<Suc i. (x # xs) ! j = ys ! j) "
+      by (auto simp add: less_Suc_eq_0_disj)
+    thus ?thesis
+      by blast 
   qed
 next
   case Nil thus ?case by (auto)
@@ -745,7 +820,7 @@ proof
       by (simp add: seq_extract_append seq_extract_out_of_range)
   qed
   ultimately show "(\<exists> i\<le>length(xs). ys = {0..<i} \<upharpoonleft>\<^sub>l xs \<and> zs = {i..<length(xs)} \<upharpoonleft>\<^sub>l xs)"
-    by (rule_tac x="length ys" in exI, auto)
+    using le_iff_add by auto
 next
   assume "\<exists>i\<le>length xs. ys = {0..<i} \<upharpoonleft>\<^sub>l xs \<and> zs = {i..<length xs} \<upharpoonleft>\<^sub>l xs"
   thus "xs = ys @ zs"
@@ -931,12 +1006,13 @@ lemma list_augment_as_update:
   by (metis list_augment_def list_augment_idem list_update_overwrite)
 
 lemma nths_list_update_out: "k \<notin> A \<Longrightarrow> nths (list_update xs k x) A = nths xs A"
-  apply (induct xs arbitrary: k x A)
-   apply (simp)
-  apply (rename_tac a xs k x A)
-  apply (case_tac k)
-   apply (auto simp add: nths_Cons)
-  done
+proof (induct xs arbitrary: k x A)
+  case Nil
+  then show ?case by simp
+next
+  case (Cons a xs)
+  then show ?case by (cases k, auto simp add: nths_Cons)
+qed
 
 lemma nths_list_augment_out: "\<lbrakk> k < length xs; k \<notin> A \<rbrakk> \<Longrightarrow> nths (list_augment xs k x) A = nths xs A"
   by (simp add: list_augment_as_update nths_list_update_out)
@@ -1293,10 +1369,7 @@ lemma list_disjoint_Cons [simp]: "list_disjoint (A # Bs) = ((\<forall> B \<in> s
   apply (safe)
     apply (metis Suc_less_eq in_set_conv_nth nat.distinct(1) neq0_conv nth_Cons_0 nth_Cons_Suc)
    apply (metis lessI lift_Suc_mono_less_iff nat.inject nth_Cons_Suc)
-  apply (rename_tac i j x)
-  apply (case_tac i)
-   apply (simp_all)
-  apply (metis less_Suc_eq_0_disj list.sel(3) nth_Cons' nth_mem nth_tl)
+  apply (metis less_Suc_eq_0_disj[of _ "length Bs"] nth_Cons_0[of A Bs] nth_Cons_Suc[of A Bs] nth_mem[of _ Bs])
   done
 
 subsection \<open> Code Generation \<close>
