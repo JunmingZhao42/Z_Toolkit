@@ -117,10 +117,7 @@ lemma map_le_graph: "f \<subseteq>\<^sub>m g \<longleftrightarrow> map_graph f \
   by (force simp add: map_le_def map_graph_def)
 
 lemma map_graph_comp: "map_graph (g \<circ>\<^sub>m f) = (map_graph f) O (map_graph g)"
-  apply (simp add: map_comp_def map_graph_def relcomp_unfold, safe)
-  apply (rename_tac a b)
-  apply (case_tac "f a", auto)
-  done
+  by (metis graph_def graph_map_comp map_graph_def)
 
 lemma rel_comp_map: "R O map_graph f = (\<lambda> p. (fst p, the (f (snd p)))) ` (R \<rhd>\<^sub>r dom(f))"
   by (force simp add: map_graph_def relcomp_unfold rel_ranres_def image_def dom_def)
@@ -164,15 +161,24 @@ lemma dom_preimage: "dom (m \<circ>\<^sub>m f) = preimage f (dom m)"
   apply (metis map_comp_def option.case_eq_if option.distinct(1))
   done
 
+
+
 lemma countable_preimage:
-  "\<lbrakk> countable A; inj_on f (preimage f A) \<rbrakk> \<Longrightarrow> countable (preimage f A)"
-  apply (simp add: countable_def, safe)
-  apply (rename_tac g)
-  apply (rule_tac x="g \<circ> the \<circ> f" in exI)
-  apply (rule inj_onI)
-  apply (drule inj_onD)
-     apply (auto simp add: preimage_def inj_onD)
-  done
+  assumes "countable A" "inj_on f (preimage f A)"
+  shows "countable (preimage f A)"
+proof -
+  obtain g :: "'a \<Rightarrow> nat" where g: "inj_on g A"
+    using assms(1) by blast
+  have "inj_on (g \<circ> the \<circ> f) (preimage f A)"
+  proof (rule inj_onI)
+    fix x y
+    assume "x \<in> preimage f A" "y \<in> preimage f A" "(g \<circ> the \<circ> f) x = (g \<circ> the \<circ> f) y"
+    with assms g show "x = y"
+      unfolding preimage_def by (metis (lifting) comp_apply domIff inj_onD mem_Collect_eq option.expand)
+  qed
+  thus ?thesis
+    by (simp add: countableI)
+qed
 
 subsection \<open> Minus operation for maps \<close>
 
@@ -210,14 +216,14 @@ text \<open> Create some extra intro/elim rules to help dealing with proof about
 
 lemma option_bindSomeE [elim!]:
   "\<lbrakk> X >>= F = Some(v); \<And> x. \<lbrakk> X = Some(x); F(x) = Some(v) \<rbrakk> \<Longrightarrow> P \<rbrakk> \<Longrightarrow> P"
-  by (case_tac X, auto)
+  by (cases X, auto)
 
 lemma option_bindSomeI [intro]:
   "\<lbrakk> X = Some(x); F(x) = Some(y) \<rbrakk> \<Longrightarrow> X >>= F = Some(y)"
   by (simp)
 
 lemma ifSomeE [elim]: "\<lbrakk> (if c then Some(x) else None) = Some(y); \<lbrakk> c; x = y \<rbrakk> \<Longrightarrow> P \<rbrakk> \<Longrightarrow> P"
-  by (case_tac c, auto)
+  by (cases c, auto)
 
 subsection \<open> Range Restriction \<close>
 
@@ -233,13 +239,20 @@ lemma ran_restrict_empty [simp]: "f\<upharpoonleft>\<^bsub>{}\<^esub> = Map.empt
   by (simp add:ran_restrict_map_def)
 
 lemma ran_restrict_ran [simp]: "f\<upharpoonleft>\<^bsub>ran(f) \<^esub> = f"
-  apply (simp add:ran_restrict_map_def ran_def)
-  apply (rule ext)
-  apply (case_tac "f(x)", auto)
-  done
+proof
+  fix x
+  show "(f\<upharpoonleft>\<^bsub>ran(f)\<^esub>) x = f x"
+  proof (cases "f(x)")
+    case None
+    then show ?thesis by (simp add: ran_restrict_map_def ran_def)
+  next
+    case (Some a)
+    then show ?thesis by (auto simp add: ran_restrict_map_def ran_def)
+  qed
+qed
 
 lemma ran_ran_restrict [simp]: "ran(f\<upharpoonleft>\<^bsub>B\<^esub>) = ran(f) \<inter> B"
-  by (auto intro!:option_bindSomeI simp add:ran_restrict_map_def ran_def)
+  by (force simp add:ran_restrict_map_def ran_def)
 
 lemma dom_ran_restrict: "dom(f\<upharpoonleft>\<^bsub>B\<^esub>) \<subseteq> dom(f)"
   by (auto simp add:ran_restrict_map_def dom_def)
@@ -255,11 +268,17 @@ lemma map_dres_rres_commute: "f\<upharpoonleft>\<^bsub>B\<^esub> |` A = (f |` A)
   by (auto simp add: restrict_map_def ran_restrict_map_def)
 
 lemma ran_restrict_map_twice [simp]: "(f\<upharpoonleft>\<^bsub>A\<^esub>)\<upharpoonleft>\<^bsub>B\<^esub> = f\<upharpoonleft>\<^bsub>(A \<inter> B)\<^esub>"
-  apply (simp add: ran_restrict_map_def fun_eq_iff option.case_eq_if, safe)
-  apply (rename_tac x)
-  apply (case_tac "f x")
-   apply (auto)
-  done
+proof 
+  fix x
+  show "((f\<upharpoonleft>\<^bsub>A\<^esub>)\<upharpoonleft>\<^bsub>B\<^esub>) x = (f\<upharpoonleft>\<^bsub>(A \<inter> B)\<^esub>) x"
+  proof (cases "f x")
+    case None
+    then show ?thesis by (simp add: ran_restrict_map_def)
+  next
+    case (Some a)
+    then show ?thesis by (simp add: ran_restrict_map_def fun_eq_iff option.case_eq_if)
+  qed
+qed
 
 lemma dom_left_map_add [simp]: "x \<in> dom g \<Longrightarrow> (f ++ g) x = g x"
   by (auto simp add:map_add_def dom_def)
@@ -328,14 +347,8 @@ lemma dom_map_inv [simp]:
 lemma ran_map_inv [simp]:
   "inj_on f (dom f) \<Longrightarrow> ran (map_inv f) = dom f"
   apply (simp add:map_inv_def ran_def, safe)
-   apply (rename_tac a b)
-   apply (rule_tac x="a" in exI)
-   apply (force intro:someI)
-  apply (rename_tac x y)
-  apply (rule_tac x="y" in exI)
-  apply (safe)
-  apply (rule some_equality, simp_all)
-  apply (auto simp add:inj_on_def dom_def)
+   apply (metis (mono_tags, lifting) verit_sko_ex')
+  apply (metis (mono_tags, lifting) domI domIff map_inv_def map_inv_f_f option.inject)
   done
 
 lemma dom_image_ran: "f ` dom f = Some ` ran f"
@@ -344,11 +357,7 @@ lemma dom_image_ran: "f ` dom f = Some ` ran f"
 lemma inj_map_inv [intro]:
   "inj_on f (dom f) \<Longrightarrow> inj_on (map_inv f) (ran f)"
   apply (simp add:map_inv_def inj_on_def dom_def ran_def, safe)
-  apply (rename_tac x y u v)
-  apply (frule_tac P="\<lambda> xa. f xa = Some x" in some_equality)
-   apply (safe)
-   apply force
-  apply (metis (mono_tags) option.sel someI)
+  apply (metis (mono_tags, lifting) option.sel someI_ex)
   done
 
 lemma inj_map_bij: "inj_on f (dom f) \<Longrightarrow> bij_betw f (dom f) (Some ` ran f)"
@@ -363,59 +372,53 @@ proof -
     by auto
 
   thus ?thesis
-    apply (rule_tac ext)
-    apply (rename_tac x)
-    apply (case_tac "\<exists> y. map_inv f y = Some x")
-    apply (metis assms domD dom_map_inv map_inv_f_f ranI ran_map_inv)
-    apply (metis assms domIff map_inv_def map_inv_f_f option.collapse ran_map_inv)
-    done
+    by (metis (no_types, lifting) ext assms domIff dom_map_inv map_inv_f_f option.collapse
+        ran_map_inv)
 qed
 
 lemma map_self_adjoin_complete [intro]:
   assumes "dom f \<inter> ran f = {}" "inj_on f (dom f)"
   shows "inj_on (map_inv f ++ f) (dom f \<union> ran f)"
-  apply (rule inj_onI)
-  apply (insert assms)
-  apply (rename_tac x y)
-  apply (case_tac "x \<in> dom f")
-   apply (simp)
-   apply (case_tac "y \<in> dom f")
-    apply (simp add:inj_on_def)
-   apply (case_tac "y \<in> ran f")
-    apply (subgoal_tac "y \<in> dom (map_inv f)")
-     apply (simp)
-     apply (metis Int_iff domD empty_iff ranI ran_map_inv)
-    apply (simp)
-   apply (simp)
-  apply (simp)
-  apply (case_tac "y \<in> dom f")
-   apply (simp)
-   apply (case_tac "y \<in> ran f")
-    apply (subgoal_tac "y \<in> dom (map_inv f)")
-     apply (simp)
-     apply (metis Int_iff empty_iff)
-    apply (simp)
-   apply (metis Int_iff domD empty_iff ranI ran_map_inv)
-  apply (simp)
-  apply (metis (lifting) inj_map_inv inj_on_contraD)
-  done
+proof (rule inj_onI)
+  fix x y
+  assume x:"x \<in> dom f \<union> ran f" and y:"y \<in> dom f \<union> ran f" 
+     and f:"(map_inv f ++ f) x = (map_inv f ++ f) y"
+
+  show "x = y"
+  proof (cases "x \<in> dom f")
+    case True
+    then show ?thesis
+      by (metis assms(1,2) disjoint_iff_not_equal domD dom_left_map_add f inj_on_def
+          map_add_dom_app_simps(3) ranI ran_map_inv) 
+  next
+    case False
+    then show ?thesis
+      by (metis (full_types) UnE assms(1,2) disjoint_iff domIff dom_left_map_add dom_map_inv
+          f inj_map_inv inj_on_def map_add_dom_app_simps(3) ran_map_inv ran_restrict_alt_def
+          ran_restrict_ran x) 
+  qed
+qed
 
 lemma inj_completed_map [intro]:
-  "\<lbrakk> dom f = ran f; inj_on f (dom f) \<rbrakk> \<Longrightarrow> inj (Some ++ f)"
-  apply (drule inj_map_bij)
-  apply (simp add:bij_betw_def)
-  apply safe
-  apply (simp add:inj_on_def)
-  apply safe
-  apply (rename_tac x y)
-  apply (case_tac "x \<in> dom f")
-   apply (simp)
-   apply (case_tac "y \<in> dom f")
-    apply (simp)
-   apply (simp add:ran_def)
-  apply (case_tac "y \<in> dom f")
-   apply (auto intro:ranI)
-  done
+  assumes "dom f = ran f" "inj_on f (dom f)"
+  shows "inj (Some ++ f)"
+proof (rule injI)
+  fix x y
+  assume f:"(Some ++ f) x = (Some ++ f) y"
+  have bb: "bij_betw f (dom f) (Some ` ran f)"
+    using assms(2) inj_map_bij by blast
+  thus "x = y"
+  proof (cases "x \<in> dom f")
+    case True
+    then show ?thesis
+      by (metis assms(1,2) f inj_on_contraD map_add_dom_app_simps(1,3) ranI) 
+  next
+    case False
+    then show ?thesis
+      by (metis assms(1) dom_left_map_add f map_add_dom_app_simps(3) option.inject
+          ranI) 
+  qed
+qed
 
 lemma bij_completed_map [intro]:
   "\<lbrakk> dom f = ran f; inj_on f (dom f) \<rbrakk> \<Longrightarrow>

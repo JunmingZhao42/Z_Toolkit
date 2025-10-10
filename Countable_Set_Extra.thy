@@ -134,9 +134,7 @@ lemma the_Some_image [simp]:
 
 lemma CCollect_ext_Some [simp]:
   "CCollect_ext Some xs = CCollect xs"
-  apply (case_tac "CCollect xs")
-   apply (auto simp add:CCollect_ext_def)
-  done
+  by (cases "CCollect xs", auto simp add:CCollect_ext_def)
 
 lift_definition list_of_cset :: "'a :: linorder cset \<Rightarrow> 'a list" is sorted_list_of_set .
 

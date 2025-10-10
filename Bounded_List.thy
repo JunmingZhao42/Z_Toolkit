@@ -37,8 +37,7 @@ code_datatype bmake
 
 lemma bmake_length_card:
   "blength (bmake TYPE('n::finite) xs) = (if length xs \<le> CARD('n) then length xs else CARD('n))"
-  apply (simp add: blength_def bmake_def, auto)
-  by (simp add: blist_of_list_inverse)+
+  by (simp add: blength_def bmake_def, auto simp add: blist_of_list_inverse)
 
 lemma blist_always_bounded:
   "length (list_of_blist (bl::'a blist['n::finite])) \<le> CARD('n)"
@@ -63,7 +62,12 @@ begin
 definition equal_blist :: "'a blist['b] \<Rightarrow> 'a blist['b] \<Rightarrow> bool" where
 "equal_blist m1 m2 \<longleftrightarrow> (list_of_blist m1 = list_of_blist m2)"
 
-instance by (intro_classes, auto simp add: equal_blist_def, transfer, auto)
+instance proof 
+  fix x y :: "'a blist['b]"
+  show "equal_class.equal x y = (x = y)"
+    by (simp add: equal_blist_def, transfer, simp)
+qed
+
 end
 
 lemma list_of_blist_code [code]:

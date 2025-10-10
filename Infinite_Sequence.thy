@@ -132,11 +132,9 @@ proof (rule transI, clarify)
       by (metis assms le_eq_less_or_eq le_less_trans nth_sinit transD)
     moreover from lt sinitm sinitn have "\<forall> j<i. sinit m xs!j = sinit m zs!j"
       by (metis less_le_trans less_trans nth_sinit)
-    ultimately have "(sinit n xs, sinit n zs) \<in> lexord R" using sinitm(2) sinitn(2) lt
-      apply (rule_tac lexord_intro_elems)
-         apply (simp_all)
-      apply (metis less_le_trans less_trans nth_sinit)
-      done
+    ultimately have "(sinit n xs, sinit n zs) \<in> lexord R"
+      by (metis assms las(1,2) lexord_append lexord_sufI lexord_trans linorder_le_cases
+          linorder_less_linear sinit_append_split sinit_len)
     thus ?thesis by auto
   next
     case False
@@ -145,11 +143,10 @@ proof (rule transI, clarify)
       by (metis less_trans nth_sinit)
     moreover from ge sinitm sinitn have "\<forall> k<j. sinit m xs!k = sinit m zs!k"
       by (metis dual_order.strict_trans nth_sinit)
-    ultimately have "(sinit n xs, sinit n zs) \<in> lexord R" using sinitm(2) sinitn(2) ge
-      apply (rule_tac lexord_intro_elems)
-         apply (simp_all)
-      apply (metis less_trans nth_sinit)
-      done
+    moreover hence "\<forall>k<j. sinit n xs ! k = sinit n zs ! k"
+      by (metis dual_order.strict_trans ge nth_sinit sinitm(2) sinitn(2))
+    ultimately have "(sinit n xs, sinit n zs) \<in> lexord R"
+      by (metis lexord_intro_elems sinit_len sinitn(2))
     thus ?thesis by auto
   qed
 qed
