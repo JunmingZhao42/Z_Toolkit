@@ -9,9 +9,7 @@ begin
 subsection \<open> Type Definition \<close>
 
 typedef (overloaded) 'a::"{zero, linorder}" pos = "{x::'a. x \<ge> 0}"
-  apply (rule_tac x = "0" in exI)
-  apply (clarsimp)
-  done
+  by blast
 
 syntax
   "_type_pos" :: "type \<Rightarrow> type" ("_\<^sup>+" [999] 999)

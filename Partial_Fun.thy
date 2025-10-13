@@ -5,6 +5,9 @@ imports "Optics.Optics" Map_Extra "HOL-Library.Mapping"
 begin
 
 no_notation "Stream.stream.SCons" (infixr \<open>##\<close> 65)
+no_notation Order.le (infixl \<open>\<sqsubseteq>\<index>\<close> 50)
+no_notation Order.top (\<open>\<top>\<index>\<close>)
+no_notation Order.bottom (\<open>\<bottom>\<index>\<close>)
 
 text \<open> I'm not completely satisfied with partial functions as provided by Map.thy, since they don't
         have a unique type and so we can't instantiate classes, make use of adhoc-overloading
@@ -314,8 +317,10 @@ lemma pfun_minus_common_subset:
 
 lemma pfun_minus_override:
   "pdom(f) \<inter> pdom(g) = {} \<Longrightarrow> (f \<oplus> g) - g = f"
-  by (transfer, simp add: map_add_def map_minus_def option.case_eq_if, rule ext, safe, simp)
-     (metis Int_commute domIff insert_disjoint(1) insert_dom)
+  apply (transfer)
+  apply (simp add: map_add_def map_minus_def option.case_eq_if fun_eq_iff)
+  apply (metis disjoint_iff domI domIff)
+  done
 
 lemma pfun_override_pos: "x \<oplus> y = {}\<^sub>p \<Longrightarrow> x = {}\<^sub>p"
   by (transfer, simp)
@@ -697,7 +702,7 @@ lemma pfun_inj_dres: "pfun_inj f \<Longrightarrow> pfun_inj (A \<lhd>\<^sub>p f)
   by (transfer, auto simp add: inj_on_def)
 
 lemma pfun_inj_rres: "pfun_inj f \<Longrightarrow> pfun_inj (f \<rhd>\<^sub>p A)"
-  by (transfer, simp add: inj_on_def ran_restrict_map_def, safe, simp, metis domI option.simps(3))
+  by (transfer, metis dom_map_inv inj_map_inv map_inv_dom_res map_inv_map_inv map_inv_ran_res ran_ran_restrict restrict_map_inj_on)
 
 lemma pfun_inj_comp: "\<lbrakk> pfun_inj f; pfun_inj g \<rbrakk> \<Longrightarrow> pfun_inj (f \<circ>\<^sub>p g)"
   by (transfer, auto simp add: inj_on_def map_comp_def option.case_eq_if dom_def)
@@ -826,11 +831,7 @@ lemma pran_res_alt_def: "f \<rhd>\<^sub>p A = pId_on A \<circ>\<^sub>p f"
   by (transfer, rule ext, auto simp add: ran_restrict_map_def)
 
 lemma pran_res_override: "(f \<oplus> g) \<rhd>\<^sub>p A \<subseteq>\<^sub>p (f \<rhd>\<^sub>p A) \<oplus> (g \<rhd>\<^sub>p A)"
-  apply (transfer, simp add: map_add_def ran_restrict_map_def map_le_def, safe)
-  apply (rename_tac f g A a y x)
-  apply (case_tac "g a")
-   apply (auto)
-  done
+  by (transfer, auto simp add: map_add_def ran_restrict_map_def map_le_def option.case_eq_if)
 
 lemma pcomp_ranres [simp]: "(f \<circ>\<^sub>p g) \<rhd>\<^sub>p A = (f \<rhd>\<^sub>p A) \<circ>\<^sub>p g"
   by (simp add: pfun_comp_assoc pran_res_alt_def)
@@ -1065,19 +1066,33 @@ lemma pfun_graph_list_pfun: "pfun_graph (list_pfun xs) = (\<lambda> i. (i, xs ! 
   by (simp add: list_pfun_def pfun_graph_pabs, auto)
 
 lemma range_list_pfun:
-  "range list_pfun = {f. \<exists> i. pdom(f) = {1..i}}"
-  apply (simp add: list_pfun_def pabs_def)
-  apply (transfer, safe, simp_all)
-  apply (rename_tac xs)
-  apply (rule_tac x="length xs" in exI, auto simp add: dom_def)[1]
-  apply (simp add: image_def)
-  apply (rename_tac f i)
-  apply (rule_tac x="map (the \<circ> f \<circ> nat) [1..i]" in exI)
-  apply (simp add: fun_eq_iff restrict_map_def, safe, simp_all)
-  apply (metis Suc_le_mono Suc_pred atLeastAtMost_iff domIff le0 option.exhaust_sel)
-  apply (metis One_nat_def atLeastAtMost_iff domIff le_zero_eq zero_neq_one)
-  apply (metis atLeastAtMost_iff domIff)
-  done
+  "range list_pfun = {f :: nat \<Zpfun> 'a. \<exists> i. pdom(f) = {1..i}}"
+proof (rule set_eqI, rule iffI)
+  fix f :: "nat \<Zpfun> 'a"
+  assume "f \<in> range list_pfun"
+  thus "f \<in> {f. \<exists>i. pdom f = {1..i}}"
+    by auto
+next
+  fix f :: "nat \<Zpfun> 'a"
+  assume "f \<in> {f. \<exists>i. pdom f = {1..i}}"
+  thus "f \<in> range list_pfun"
+  proof (unfold list_pfun_def pabs_def image_def, transfer)
+    fix f :: "nat \<Rightarrow> 'a option"
+    assume "f \<in> {f. \<exists>i. dom f = {1..i}}"
+    then obtain i where i:"dom f = {1..i}"
+      by blast
+    hence 1: "\<And>x. dom f = {Suc 0..i} \<Longrightarrow> 0 < x \<Longrightarrow> x \<le> i \<Longrightarrow> f x = Some (the (f x))"
+      by (metis Suc_leI atLeastAtMost_iff domIff option.exhaust_sel)
+    with i have 2:"f 0 = None"
+      using atLeastAtMost_iff not_one_le_zero by blast
+    from i 1 2 have f: "f = (\<lambda>xa. Some (map (the \<circ> f \<circ> nat) [1..int i] ! (xa - Suc 0))) |` {ia. 0 < ia \<and> ia \<le> length (map (the \<circ> f \<circ> nat) [1..int i])}"
+      by (auto simp add: fun_eq_iff restrict_map_def)
+    have 3: "(\<lambda>xa. Some (map (the \<circ> f \<circ> nat) [1..int i] ! (xa - Suc 0))) |` {ia. 0 < ia \<and> ia \<le> length (map (the \<circ> f \<circ> nat) [1..int i])} \<in> {y. \<exists>x\<in>UNIV. y = (\<lambda>xa. if xa \<in> UNIV then Some (x ! (xa - 1)) else None) |` (UNIV \<inter> {i. 0 < i \<and> i \<le> length x})}"
+      by (auto simp add: fun_eq_iff restrict_map_def)
+    show "f \<in> {y. \<exists>x\<in>UNIV. y = (\<lambda>xa. if xa \<in> UNIV then Some (x ! (xa - 1)) else None) |` (UNIV \<inter> {i. 0 < i \<and> i \<le> length x})}"
+      using "3" f by auto
+  qed
+qed
 
 lemma list_pfun_le_iff_prefix [simp]: "list_pfun xs \<le> list_pfun ys \<longleftrightarrow> xs \<le> ys"
   apply (simp add: pfun_le_iff, safe, simp_all add: pfun_app_list_pfun list_le_prefix_iff)

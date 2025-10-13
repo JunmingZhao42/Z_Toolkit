@@ -1,14 +1,14 @@
 section \<open> Finite Functions \<close>
 
 theory Finite_Fun
-  imports Map_Extra Partial_Fun
+  imports Partial_Fun
 begin
 
 subsection \<open> Finite function type and operations \<close>
 
 typedef ('a, 'b) ffun = "{f :: ('a, 'b) pfun. finite(pdom(f))}"
   morphisms pfun_of Abs_pfun
-  by (rule_tac x="{}\<^sub>p" in exI, auto)
+  using infinite_imp_nonempty by auto
 
 type_notation ffun (infixr "\<Zffun>" 1)
 

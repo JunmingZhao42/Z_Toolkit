@@ -6,7 +6,7 @@ begin
 
 typedef ('a, 'b) finj = "{f :: 'a \<Zpinj> 'b. finite(pidom(f))}"
   morphisms pinj_of_finj finj_of_pinj
-  by (rule_tac x="{}\<^sub>\<rho>" in exI, simp)
+  by (metis CollectI infinite_imp_nonempty pidom_empty)
 
 setup_lifting type_definition_ffun
 setup_lifting type_definition_finj

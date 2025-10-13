@@ -14,6 +14,11 @@ text \<open> This theory marks the boundary between reusable library utilities a
 lemma if_eqE [elim!]: "\<lbrakk> (if b then e else f) = v; \<lbrakk> b; e = v \<rbrakk> \<Longrightarrow> P; \<lbrakk> \<not> b; f = v \<rbrakk> \<Longrightarrow> P \<rbrakk> \<Longrightarrow> P"
   by (cases b, auto)
 
+no_notation Order.le (infixl \<open>\<sqsubseteq>\<index>\<close> 50)
+no_notation Order.lless (infixl \<open>\<sqsubset>\<index>\<close> 50)
+no_notation Order.top (\<open>\<top>\<index>\<close>)
+no_notation Order.bottom (\<open>\<bottom>\<index>\<close>)
+
 bundle Z_Type_Syntax
 begin
 
