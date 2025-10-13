@@ -420,19 +420,30 @@ proof (rule injI)
   qed
 qed
 
+thm set_eqI
+
 lemma bij_completed_map [intro]:
-  "\<lbrakk> dom f = ran f; inj_on f (dom f) \<rbrakk> \<Longrightarrow>
-   bij_betw (Some ++ f) UNIV (range Some)"
-  apply (simp add:bij_betw_def inj_completed_map)
-  apply safe
-   apply (rename_tac x)
-   apply (case_tac "x \<in> dom f")
-    apply (simp)
-    apply (metis domD rangeI)
-   apply (simp)
-  apply (simp add:image_def)
-  apply (metis (full_types) dom_image_ran dom_left_map_add image_iff map_add_dom_app_simps(3))
-  done
+  fixes f :: "'a \<rightharpoonup> 'a"
+  assumes "dom f = ran f" "inj_on f (dom f)"
+  shows "bij_betw (Some ++ f) UNIV (range Some)"
+proof -
+  have "range (Some ++ f) = range Some"
+  proof (rule set_eqI, rule iffI)
+    fix x
+    assume "x \<in> range (Some ++ f)"
+    thus "x \<in> range Some"
+      using image_iff by fastforce
+  next
+    fix x :: "'a option"
+    assume "x \<in> range Some"
+    thus "x \<in> range (Some ++ f)"
+      by (metis assms(1) dom_image_ran[of f] image_iff[of x f "dom f"] image_iff[of "Some _" Some "dom f"] image_iff[of x Some UNIV]
+          map_add_dom_app_simps(1)[of _ f Some] map_add_dom_app_simps(3)[of _ f Some] rangeI[of "Some ++ f"])
+  qed
+  thus ?thesis
+    by (metis assms(1,2) inj_completed_map inj_on_imp_bij_betw)
+qed
+
 
 lemma bij_map_Some:
   "bij_betw f a (Some ` b) \<Longrightarrow> bij_betw (the \<circ> f) a b"
@@ -508,11 +519,7 @@ proof (rule ext)
     done
 
   ultimately show "map_inv (f ++ g) x = (map_inv f ++ map_inv g) x"
-    apply (case_tac "x \<in> ran g")
-     apply (simp)
-    apply (case_tac "x \<in> ran f")
-     apply (simp_all)
-    done
+    by blast
 qed
 
 lemma map_inv_dom_res:
@@ -521,7 +528,7 @@ lemma map_inv_dom_res:
   using assms
   apply (simp add: map_inv_def restrict_map_def ran_restrict_map_def dom_def ran_def fun_eq_iff inj_on_def)
   apply (safe intro!: some_equality)
-     apply (metis (mono_tags, lifting) option.simps(3) someI_ex)+
+     apply (metis (mono_tags, lifting) someI_ex)+
   done
 
 lemma map_inv_ran_res:
@@ -537,11 +544,17 @@ lemma map_add_lookup [simp]:
   by (simp add:map_add_def dom_def)
 
 lemma map_add_Some: "Some ++ f = map_id_on (- dom f) ++ f"
-  apply (rule ext)
-  apply (rename_tac x)
-  apply (case_tac "x \<in> dom f")
-   apply (simp_all)
-  done
+proof 
+  fix x
+  show "(Some ++ f) x = (map_id_on (- dom f) ++ f) x"
+  proof (cases "x \<in> dom f")
+    case True
+    then show ?thesis by simp
+  next
+    case False
+    then show ?thesis by simp
+  qed
+qed
 
 lemma distinct_map_dom:
   "x \<notin> set xs \<Longrightarrow> x \<notin> dom [xs [\<mapsto>] ys]"
@@ -557,11 +570,10 @@ lemma distinct_map_ran:
   apply (simp add:zip_rev[THEN sym])
 done
 
-lemma maplets_lookup[rule_format,dest]:
-  "\<lbrakk> length xs = length ys; distinct xs \<rbrakk> \<Longrightarrow>
-     \<forall> y. [xs [\<mapsto>] ys] x = Some y \<longrightarrow> y \<in> set ys"
-  by (induct rule:list_induct2, auto)
-
+lemma maplets_lookup [dest]:
+  "\<lbrakk> length xs = length ys; distinct xs; \<forall> y. [xs [\<mapsto>] ys] x = Some y \<rbrakk> \<Longrightarrow> y \<in> set ys"
+  using ranI by fastforce
+  
 lemma maplets_distinct_inj [intro]:
   "\<lbrakk> length xs = length ys; distinct xs; distinct ys; set xs \<inter> set ys = {} \<rbrakk> \<Longrightarrow>
    inj_on [xs [\<mapsto>] ys] (set xs)"
@@ -569,20 +581,8 @@ lemma maplets_distinct_inj [intro]:
    apply (simp_all)
   apply (rule conjI)
    apply (rule inj_onI)
-   apply (rename_tac x xs y ys xa ya)
-   apply (case_tac "xa = x")
-    apply (simp)
-   apply (case_tac "xa = y")
-    apply (simp)
-   apply (simp)
-   apply (case_tac "ya = x")
-    apply (simp)
-   apply (simp add:inj_on_def)
-  apply (safe)
-  apply (rename_tac x xs y ys xa)
-  apply (case_tac "xa = y")
-   apply (simp)
-  apply (metis maplets_lookup)
+  apply (metis fun_upd_def inj_on_contraD)
+  apply (metis image_iff ranI ran_maplets)
   done
 
 lemma map_inv_maplet[simp]: "map_inv [x \<mapsto> y] = [y \<mapsto> x]"
@@ -621,53 +621,57 @@ qed
 lemma map_inv_maplets [simp]:
   "\<lbrakk> length xs = length ys; distinct xs; distinct ys; set xs \<inter> set ys = {} \<rbrakk> \<Longrightarrow>
   map_inv [xs [\<mapsto>] ys] = [ys [\<mapsto>] xs]"
-  apply (induct rule:list_induct2)
-   apply (simp_all)
-  apply (rename_tac x xs y ys)
-  apply (subgoal_tac "map_inv ([xs [\<mapsto>] ys] ++ [x \<mapsto> y]) = map_inv [xs [\<mapsto>] ys] ++ map_inv [x \<mapsto> y]")
-   apply (simp)
-  apply (rule map_inv_add')
-     apply (auto)
-  done
+proof (induct rule:list_induct2)
+  case Nil
+  then show ?case by simp
+next
+  case (Cons x xs y ys)
+  have "map_inv ([xs [\<mapsto>] ys] ++ [x \<mapsto> y]) = map_inv [xs [\<mapsto>] ys] ++ map_inv [x \<mapsto> y]"
+  proof (rule map_inv_add')
+    from Cons show "inj_on [xs [\<mapsto>] ys] (dom [xs [\<mapsto>] ys])" by auto
+    from Cons show "inj_on [x \<mapsto> y] (dom [x \<mapsto> y])" by auto
+    from Cons show "dom [xs [\<mapsto>] ys] \<inter> dom [x \<mapsto> y] = {}" by auto
+    from Cons show "ran [xs [\<mapsto>] ys] \<inter> ran [x \<mapsto> y] = {}" by auto
+  qed
+  with Cons show ?case
+    by (metis disjoint_iff distinct.simps(2) list.set_intros(2) map_inv_maplet map_update_as_add map_upds_Cons map_upds_twist)
+qed
 
-lemma maplets_lookup_nth [rule_format,simp]:
-  "\<lbrakk> length xs = length ys; distinct xs \<rbrakk> \<Longrightarrow>
-   \<forall> i < length ys. [xs [\<mapsto>] ys] (xs ! i) = Some (ys ! i)"
-  apply (induct rule:list_induct2)
-   apply (safe, simp_all)
-   apply (rename_tac x xs y ys i)
-   apply (case_tac i)
-    apply (simp_all)
-   apply (metis nth_mem)
+lemma maplets_lookup_nth [simp]:
+  "\<lbrakk> length xs = length ys; distinct xs; i < length ys \<rbrakk> \<Longrightarrow>
+   [xs [\<mapsto>] ys] (xs ! i) = Some (ys ! i)"
+  apply (induct arbitrary: i rule:list_induct2)
+  apply simp
+  using less_Suc_eq_0_disj apply auto
   done
 
 theorem inv_map_inv:
-  "\<lbrakk> inj_on f (dom f); ran f = dom f \<rbrakk>
-  \<Longrightarrow> inv (the \<circ> (Some ++ f)) = the \<circ> map_inv (Some ++ f)"
-  apply (rule ext)
-  apply (simp add:map_add_Some map_inv_add')
-  apply (simp add:inv_def)
-  apply (rename_tac x)
-  apply (case_tac "\<exists> y. f y = Some x")
-   apply (erule exE)
-   apply (rename_tac x y)
-   apply (subgoal_tac "x \<in> ran f")
-    apply (subgoal_tac "y \<in> dom f")
-     apply (simp)
-     apply (rule some_equality)
-      apply (simp)
-     apply (metis (opaque_lifting, mono_tags) domD domI dom_left_map_add inj_on_contraD map_add_Some map_add_dom_app_simps(3) option.sel)
-    apply (simp add:dom_def)
-   apply (metis ranI)
-  apply (simp)
-  apply (rename_tac x)
-  apply (subgoal_tac "x \<notin> ran f")
-   apply (simp)
-   apply (rule some_equality)
-    apply (simp)
-   apply (metis domD dom_left_map_add map_add_Some map_add_dom_app_simps(3) option.sel)
-  apply (metis dom_image_ran image_iff)
-  done
+  assumes "inj_on f (dom f)" "ran f = dom f"
+  shows "inv (the \<circ> (Some ++ f)) = the \<circ> map_inv (Some ++ f)"
+proof
+  fix x
+  show "(inv (the \<circ> (Some ++ f))) x = (the \<circ> map_inv (Some ++ f)) x"
+  proof (cases "x \<in> ran f")
+    case True
+    then obtain y where y:"f y = Some x"
+      by (metis dom_image_ran image_iff)
+    with assms show ?thesis 
+      apply (simp add:map_add_Some map_inv_add' inv_def)
+      apply (rule some_equality)
+      apply simp
+      apply (metis (full_types) Compl_iff domIff inj_on_def map_add_Some map_add_dom_app_simps(2,3) map_id_dom option.exhaust_sel ranI)
+      done
+  next
+    case False
+    then show ?thesis 
+      apply (simp add:map_add_Some map_inv_add' inv_def)
+      apply (rule some_equality)
+      apply (simp add: assms(1,2) map_inv_add')
+      apply (metis (no_types, opaque_lifting) Un_UNIV_right assms(1,2) dom_map_add inj_completed_map map_add_None map_add_Some map_id_dom map_id_on_UNIV map_inv_f_f option.exhaust_sel
+          option.sel)
+      done
+  qed
+qed
 
 lemma map_comp_dom: "dom (g \<circ>\<^sub>m f) \<subseteq> dom f"
   by (metis (lifting, full_types) Collect_mono dom_def map_comp_simps(1))
@@ -884,11 +888,16 @@ lemma map_add_cancel:
      (metis domIff)
 
 lemma map_le_iff_add: "f \<subseteq>\<^sub>m g \<longleftrightarrow> (\<exists> h. dom(f) \<inter> dom(h) = {} \<and> f ++ h = g)"
-  apply (safe)
-  apply (rule_tac x="g -- f" in exI)
-  apply (metis (no_types, lifting) Int_emptyI domIff map_add_cancel map_le_def map_minus_def)
-  apply (simp add: map_add_comm)
-  done
+proof 
+  assume "f \<subseteq>\<^sub>m g" 
+  hence "dom f \<inter> dom (g -- f) = {} \<and> f ++ (g -- f) = g"
+    by (metis (no_types, lifting) Int_emptyI domIff map_add_cancel map_le_def map_minus_def)
+  thus "\<exists>h. dom f \<inter> dom h = {} \<and> f ++ h = g" by blast
+next
+  assume "\<exists>h. dom f \<inter> dom h = {} \<and> f ++ h = g"
+  thus "f \<subseteq>\<^sub>m g"
+    by (auto simp add: map_add_comm)
+qed
 
 lemma map_add_comm_weak: "(\<forall> k \<in> dom m1 \<inter> dom m2. m1(k) = m2(k)) \<Longrightarrow> m1 ++ m2 = m2 ++ m1"
   by (simp add: map_add_def option.case_eq_if fun_eq_iff)
