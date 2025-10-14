@@ -96,8 +96,6 @@ lemmas piran_res_empty [simp] = pran_res_empty[Transfer.transferred]
 lemma pidom_res_upd: "A \<lhd>\<^sub>\<rho> f(k \<mapsto> v)\<^sub>\<rho> = (if k \<in> A then (A \<lhd>\<^sub>\<rho> f)(k \<mapsto> v)\<^sub>\<rho> else A \<lhd>\<^sub>\<rho> (f \<rhd>\<^sub>\<rho> (- {v})))"
   by (transfer, simp, metis pdom_res_swap)
 
-thm pdom_res_upd_out[Transfer.transferred]
-
 lemma piran_res_upd: "f(x \<mapsto> v)\<^sub>\<rho> \<rhd>\<^sub>\<rho> A = (if v \<in> A then (f \<rhd>\<^sub>\<rho> A)(x \<mapsto> v)\<^sub>\<rho> else ((- {x}) \<lhd>\<^sub>\<rho> f) \<rhd>\<^sub>\<rho> A)"
   by (transfer, simp add: inf.commute)
      (metis (no_types, opaque_lifting) ComplI Compl_Un double_compl insert_absorb insert_is_Un pdom_res_swap pran_res_twice)

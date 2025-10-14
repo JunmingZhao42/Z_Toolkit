@@ -645,7 +645,7 @@ using assms proof (induct xs arbitrary: ys)
   show ?case
   proof (cases "(x, y) \<in> R")
     case True with ys show ?thesis
-      by (rule_tac x="0" in exI, simp)
+      by force
   next
     case False
     with ys hyps(2) have xy: "x = y" "(xs, ys') \<in> lexord R"
@@ -1276,11 +1276,15 @@ lemma length_b_lists_elem: "ys \<in> set (b_lists n xs) \<Longrightarrow> length
 lemma b_lists_in_lists: "ys \<in> set (b_lists n xs) \<Longrightarrow> ys \<in> lists (set xs)"
   by (auto simp add: b_lists_def in_mono set_n_lists)
 
-lemma in_blistsI: "\<lbrakk> length xs \<le> n; xs \<in> lists (set A) \<rbrakk> \<Longrightarrow> xs \<in> set (b_lists n A)"
-  apply (simp_all add: b_lists_def, safe)
-  apply (rule_tac x="length xs" in bexI)
-   apply (auto simp add: set_n_lists subsetI)
-  done
+lemma in_blistsI: 
+  assumes "length xs \<le> n" "xs \<in> lists (set A)"
+  shows "xs \<in> set (b_lists n A)"
+proof -
+  have "xs \<notin> set (List.n_lists n A) \<Longrightarrow> xs \<in> set (List.n_lists (length xs) A)"
+    using assms(2) in_lists_conv_set set_n_lists by fastforce
+  with assms show ?thesis
+  by (force simp add: set_n_lists subsetI b_lists_def)
+qed
 
 lemma ex_list_nonempty_carrier:
   assumes "A \<noteq> {}"

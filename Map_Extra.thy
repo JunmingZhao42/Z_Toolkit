@@ -420,8 +420,6 @@ proof (rule injI)
   qed
 qed
 
-thm set_eqI
-
 lemma bij_completed_map [intro]:
   fixes f :: "'a \<rightharpoonup> 'a"
   assumes "dom f = ran f" "inj_on f (dom f)"
