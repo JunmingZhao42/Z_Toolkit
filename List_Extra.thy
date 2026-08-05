@@ -1376,6 +1376,47 @@ lemma list_disjoint_Cons [simp]: "list_disjoint (A # Bs) = ((\<forall> B \<in> s
   apply (metis less_Suc_eq_0_disj[of _ "length Bs"] nth_Cons_0[of A Bs] nth_Cons_Suc[of A Bs] nth_mem[of _ Bs])
   done
 
+subsection \<open> Head and Tail Sets \<close>
+
+definition hds :: "'a list set \<Rightarrow> 'a set" where
+"hds A = {x. \<exists> xs. x # xs \<in> A}"
+
+definition tls :: "'a list set \<Rightarrow> 'a \<Rightarrow> 'a list set" where
+"tls A x = {xs. x # xs \<in> A}"
+
+lemma hds_tls: "\<lbrakk> x \<in> hds A; xs \<in> tls A x \<rbrakk> \<Longrightarrow> x # xs \<in> A"
+  by (simp add: hds_def tls_def)
+
+lemma hds_single: "xs \<noteq> [] \<Longrightarrow> hds {xs} = {hd xs}"
+  using list.collapse by (force simp add: hds_def)
+
+lemma tls_single: "xs \<noteq> [] \<Longrightarrow> tls {xs} (hd xs) = {tl xs}"
+  by (auto simp add: tls_def, metis list.sel(3))
+
+subsection \<open> Prefix Closure \<close>
+
+definition prefix_closed :: "'a list set \<Rightarrow> bool" where
+"prefix_closed A = (\<forall> xs\<in>A. \<forall> ys. prefix ys xs \<longrightarrow> ys \<in> A)"
+
+lemma prefix_closed: "\<lbrakk> prefix_closed A; ys \<in> A; prefix xs ys \<rbrakk> \<Longrightarrow> xs \<in> A"
+  by (simp add: prefix_closed_def)
+
+lemma prefix_closed_empty: "prefix_closed {}" 
+  by (simp add: prefix_closed_def)
+
+lemma prefix_closed_Nil: "\<lbrakk> A \<noteq> {}; prefix_closed A \<rbrakk> \<Longrightarrow> [] \<in> A"
+  by (auto simp add: prefix_closed_def)
+
+lemma Nil_in_tls_prefix_closed:
+  assumes a_hd: "a \<in> hds A" and pf_A: "prefix_closed A"
+  shows "[] \<in> tls A a"
+proof -
+  from a_hd obtain xs where xs: "xs \<in> tls A a"
+    by (auto simp add: hds_def tls_def)
+  with pf_A show ?thesis
+    by (simp add: prefix_closed_def tls_def)
+qed
+
 subsection \<open> Code Generation \<close>
 
 lemma set_singleton_iff: "set xs = {x} \<longleftrightarrow> remdups xs = [x]"

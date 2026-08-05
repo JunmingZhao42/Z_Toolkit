@@ -216,6 +216,12 @@ translations
   "_pabs_tot x f" == "_pabs_pred x (CONST True) f"
   "_pabs_tot x f" <= "_pabs_mem x (CONST UNIV) f"
 
+syntax_consts 
+  "_pabs" \<rightleftharpoons> pabs and
+  "_pabs_mem" \<rightleftharpoons> pabs and
+  "_pabs_pred" \<rightleftharpoons> pabs and
+  "_pabs_tot" \<rightleftharpoons> pabs
+
 subsection \<open> Algebraic laws \<close>
 
 lemma pfun_comp_assoc: "f \<circ>\<^sub>p (g \<circ>\<^sub>p h) = (f \<circ>\<^sub>p g) \<circ>\<^sub>p h"
@@ -350,6 +356,9 @@ lemma pfun_app_in_ran [simp]: "x \<in> pdom f \<Longrightarrow> f(x)\<^sub>p \<i
 
 lemma pfun_app_map [simp]: "(pfun_of_map f)(x)\<^sub>p = (if (x \<in> dom(f)) then the (f x) else undefined)"
   by (transfer, simp)
+
+lemma pfun_app_pId [simp]: "x \<in> A \<Longrightarrow> (pId_on A)(x)\<^sub>p = x"
+  by (transfer, auto)
 
 lemma pfun_app_upd_1: "x = y \<Longrightarrow> (f(x \<mapsto> v)\<^sub>p)(y)\<^sub>p = v"
   by (transfer, simp)
