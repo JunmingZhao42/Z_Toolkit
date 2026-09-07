@@ -34,7 +34,7 @@ fun mk_show_eq n ctx =
 
 fun mk_show_fun tname ctrs ctx =
   let val typ = Syntax.read_typ ctx tname in
-  Function_Fun.add_fun
+  Function_Fun.add_fun 
     [(Binding.name ("show_" ^ tname), SOME (typ --> @{typ "String.literal"}), NoSyn)]
     (map (fn n => ((Binding.empty_atts, mk_show_eq n ctx), [], [])) ctrs)
     (Function_Fun.fun_config) ctx

@@ -441,15 +441,9 @@ proof -
       by simp
     from ys obtain v where v: "(k, v) \<in> set xs"
       using hd_in_set by fastforce
-    have kv_filter: "(k, v) \<in> set ?ys"
-      using kmem v by simp
-    have kv_replicate: "(k, v) \<in> set (replicate (length ?ys) (hd ?ys))"
-      using kv_filter ys(2) by simp
-    have "(k, v) = hd ?ys \<and> length ?ys \<noteq> 0"
-      using kv_replicate by (simp add: in_set_replicate)
-    hence "(k, v) = hd ?ys"
-      by simp
-    hence ys': "?ys = replicate (length ?ys) (k, v)"
+    have "(k, v) = hd ?ys"
+      using v by (simp only: kmem, subst (asm) ys(2), simp)
+    hence ys':"?ys = replicate (length ?ys) (k, v)"
       using ys(2) by simp
     hence "snd (hd ?ys) = v"
       by (metis hd_replicate replicate_0 snd_conv ys(1))
